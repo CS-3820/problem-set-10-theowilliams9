@@ -235,7 +235,7 @@ smallStep (Store e, acc)
   | not (isValue e) = do
       (e', acc') <- smallStep (e, acc)
       return (Store e', acc')
-  | otherwise = Just (Const 0, e)  -- Updates accumulator to `e`
+  | otherwise = Just (Const 0, e)  
 
 smallStep (Recall, acc) = Just (acc, acc)
 
@@ -246,16 +246,16 @@ smallStep (Throw e, acc)
   | otherwise = Just (Throw e, acc)
 
 smallStep (Catch e1 y e2, acc)
-  | isValue e1 = Just (e1, acc)  -- Skip if `e1` already a value
+  | isValue e1 = Just (e1, acc)  
   | not (isValue e1) = do
       (e1', acc') <- smallStep (e1, acc)
       return (Catch e1' y e2, acc')
-  | Throw e <- e1 = Just (subst y e e2, acc)  -- Handle `Throw` in `Catch`
+  | Throw e <- e1 = Just (subst y e e2, acc)  
   | otherwise = Just (e1, acc)
 
--- Limit number of steps (for debugging)
+
 steps :: Int -> (Expr, Expr) -> [(Expr, Expr)]
-steps 0 s = [s]  -- Stop recursion at depth limit
+steps 0 s = [s] 
 steps n s = case smallStep s of
               Nothing -> [s]
               Just s' -> s : steps (n - 1) s'
