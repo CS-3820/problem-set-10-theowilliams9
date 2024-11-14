@@ -232,7 +232,7 @@ smallStep (Store e, acc)
   | not (isValue e) = do
       (e', acc') <- smallStep (e, acc)
       return (Store e', acc')
-  | otherwise = Just (Const 0, e)  -- Stores the value of e in the accumulator
+  | otherwise = Just (Const 0, e)  
 smallStep (Recall, acc) = Just (acc, acc)
 smallStep (Throw e, acc)
   | not (isValue e) = do
