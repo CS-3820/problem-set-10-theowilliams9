@@ -108,7 +108,10 @@ subst x m (Var y)
   | otherwise = Var y
 subst x m (Lam y n) = Lam y (substUnder x m y n)
 subst x m (App n1 n2) = App (subst x m n1) (subst x m n2)
-subst x m n = undefined
+subst x m (Store n) = Store (subst x m n)
+subst _ _ Recall = Recall
+subst x m (Throw n) = Throw (subst x m n)
+subst x m (Catch n y n') = Catch (subst x m n) y (substUnder x m y n')
 
 {-------------------------------------------------------------------------------
 
@@ -202,7 +205,46 @@ bubble; this won't *just* be `Throw` and `Catch.
 -------------------------------------------------------------------------------}
 
 smallStep :: (Expr, Expr) -> Maybe (Expr, Expr)
-smallStep = undefined
+smallStep (Const i, acc) = Nothing
+smallStep (Plus e1 e2, acc)
+  | not (isValue e1) = do
+      (e1', acc') <- smallStep (e1, acc)
+      return (Plus e1' e2, acc')
+  | not (isValue e2) = do
+      (e2', acc') <- smallStep (e2, acc)
+      return (Plus e1 e2', acc')
+  | otherwise = case (e1, e2) of
+      (Const i1, Const i2) -> Just (Const (i1 + i2), acc)
+      (Throw e, _) -> Just (Throw e, acc)
+      (_, Throw e) -> Just (Throw e, acc)
+smallStep (Var x, acc) = Nothing
+smallStep (Lam x e, acc) = Nothing
+smallStep (App e1 e2, acc)
+  | not (isValue e1) = do
+      (e1', acc') <- smallStep (e1, acc)
+      return (App e1' e2, acc')
+  | not (isValue e2) = do
+      (e2', acc') <- smallStep (e2, acc)
+      return (App e1 e2', acc')
+  | Lam x e <- e1 = Just (subst x e2 e, acc)
+  | Throw e <- e1 = Just (Throw e, acc)
+smallStep (Store e, acc)
+  | not (isValue e) = do
+      (e', acc') <- smallStep (e, acc)
+      return (Store e', acc')
+  | otherwise = Just (Const 0, e)  -- Stores the value of e in the accumulator
+smallStep (Recall, acc) = Just (acc, acc)
+smallStep (Throw e, acc)
+  | not (isValue e) = do
+      (e', acc') <- smallStep (e, acc)
+      return (Throw e', acc')
+  | otherwise = Just (Throw e, acc)
+smallStep (Catch e1 y e2, acc)
+  | not (isValue e1) = do
+      (e1', acc') <- smallStep (e1, acc)
+      return (Catch e1' y e2, acc')
+  | Throw e <- e1 = Just (subst y e e2, acc)
+  | otherwise = Just (e1, acc)
 
 steps :: (Expr, Expr) -> [(Expr, Expr)]
 steps s = case smallStep s of
