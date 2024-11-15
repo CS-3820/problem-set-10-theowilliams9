@@ -206,9 +206,6 @@ bubble; this won't *just* be `Throw` and `Catch.
 
 smallStep :: (Expr, Expr) -> Maybe (Expr, Expr)
 smallStep (Const i, acc) = Nothing
-smallStep (Var x, acc) = Nothing
-smallStep (Lam x e, acc) = Nothing
-
 smallStep (Plus e1 e2, acc)
   | not (isValue e1) = do
       (e1', acc') <- smallStep (e1, acc)
@@ -220,7 +217,8 @@ smallStep (Plus e1 e2, acc)
       (Const i1, Const i2) -> Just (Const (i1 + i2), acc)
       (Throw e, _) -> Just (Throw e, acc)
       (_, Throw e) -> Just (Throw e, acc)
-
+smallStep (Var x, acc) = Nothing
+smallStep (Lam x e, acc) = Nothing
 smallStep (App e1 e2, acc)
   | not (isValue e1) = do
       (e1', acc') <- smallStep (e1, acc)
@@ -230,35 +228,28 @@ smallStep (App e1 e2, acc)
       return (App e1 e2', acc')
   | Lam x e <- e1 = Just (subst x e2 e, acc)
   | Throw e <- e1 = Just (Throw e, acc)
-
 smallStep (Store e, acc)
   | not (isValue e) = do
       (e', acc') <- smallStep (e, acc)
       return (Store e', acc')
   | otherwise = Just (Const 0, e)  
-
 smallStep (Recall, acc) = Just (acc, acc)
-
 smallStep (Throw e, acc)
   | not (isValue e) = do
       (e', acc') <- smallStep (e, acc)
       return (Throw e', acc')
   | otherwise = Just (Throw e, acc)
-
 smallStep (Catch e1 y e2, acc)
-  | isValue e1 = Just (e1, acc)  
   | not (isValue e1) = do
       (e1', acc') <- smallStep (e1, acc)
       return (Catch e1' y e2, acc')
-  | Throw e <- e1 = Just (subst y e e2, acc)  
+  | Throw e <- e1 = Just (subst y e e2, acc)
   | otherwise = Just (e1, acc)
 
-
-steps :: Int -> (Expr, Expr) -> [(Expr, Expr)]
-steps 0 s = [s] 
-steps n s = case smallStep s of
-              Nothing -> [s]
-              Just s' -> s : steps (n - 1) s'
+steps :: (Expr, Expr) -> [(Expr, Expr)]
+steps s = case smallStep s of
+            Nothing -> [s]
+            Just s' -> s : steps s'
 
 prints :: Show a => [a] -> IO ()
 prints = mapM_ print
