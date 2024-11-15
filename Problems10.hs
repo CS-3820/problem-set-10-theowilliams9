@@ -246,6 +246,7 @@ smallStep (Catch e1 y e2, acc)
   | Throw e <- e1 = Just (subst y e e2, acc)
   | otherwise = Just (e1, acc)
 
+
 steps :: (Expr, Expr) -> [(Expr, Expr)]
 steps s = case smallStep s of
             Nothing -> [s]
